@@ -1,10 +1,11 @@
-import type { DailySummary, PlannerState, View } from "./types";
+import type { DailySummary, PlannerState, Priority, Task, View } from "./types";
 
 const STORAGE_KEY = "adhd-flow-planner-state-v1";
 const VIEW_STORAGE_KEY = "adhd-flow-planner-view-v1";
 const DAILY_SUMMARIES_KEY = "adhd-flow-daily-summaries";
 const SIDE_PANEL_STATE_KEY = "adhd-flow-side-panel-state-v1";
 const validViews: View[] = ["todo", "priority", "flow", "done", "calendar", "feedback"];
+const priorityLevels: Priority[] = ["P0", "P1", "P2"];
 
 export type SidePanelKey = "done" | "parking" | "life";
 export type SidePanelState = Record<SidePanelKey, boolean>;
@@ -21,6 +22,28 @@ export const defaultState: PlannerState = {
   adaptations: [],
 };
 
+function normalizeTaskOrders(tasks: Task[]) {
+  const orderById = new Map<string, number>();
+  const indexedTasks = tasks.map((task, index) => ({ task, index }));
+
+  priorityLevels.forEach((priority) => {
+    indexedTasks
+      .filter(({ task }) => task.priority === priority)
+      .sort((a, b) => {
+        const orderA = typeof a.task.order === "number" ? a.task.order : a.index;
+        const orderB = typeof b.task.order === "number" ? b.task.order : b.index;
+        return orderA - orderB || a.index - b.index;
+      })
+      .forEach(({ task }, index) => orderById.set(task.id, index));
+  });
+
+  return tasks.map((task, index) => ({
+    ...task,
+    order: orderById.get(task.id) ?? task.order ?? index,
+    evidenceImages: Array.isArray(task.evidenceImages) ? task.evidenceImages : [],
+  }));
+}
+
 export function loadPlannerState(): PlannerState {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
@@ -28,12 +51,7 @@ export function loadPlannerState(): PlannerState {
     const parsed = JSON.parse(raw) as PlannerState;
 
     return {
-      tasks: Array.isArray(parsed.tasks)
-        ? parsed.tasks.map((task) => ({
-            ...task,
-            evidenceImages: Array.isArray(task.evidenceImages) ? task.evidenceImages : [],
-          }))
-        : [],
+      tasks: Array.isArray(parsed.tasks) ? normalizeTaskOrders(parsed.tasks) : [],
       parking: Array.isArray(parsed.parking) ? parsed.parking : [],
       adaptations: Array.isArray(parsed.adaptations) ? parsed.adaptations : [],
     };

@@ -107,6 +107,7 @@ export function createTask(title: string): Task {
     id: crypto.randomUUID(),
     title: title.trim(),
     priority: result.priority,
+    order: 0,
     stage: "capture",
     createdAt: now,
     updatedAt: now,

@@ -17,10 +17,12 @@ export interface Task {
   id: string;
   title: string;
   priority: Priority;
+  order?: number;
   stage: Stage;
   createdAt: string;
   updatedAt: string;
   completedAt?: string;
+  doneAt?: string;
   reason: string;
   evidenceImages?: EvidenceImage[];
 }
